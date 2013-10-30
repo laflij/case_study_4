@@ -1,0 +1,58 @@
+# Lammps script to run a LJ liquid simulation
+
+# Units and atom information
+units         real   
+atom_style    atomic
+pair_style    lj/cut 9
+boundary p p p
+
+# Read data file
+read_data  ljliquid.data
+
+# pair      type type   eps    sigma  
+pair_coeff    1    1   0.2151  3.000  
+
+# Timestep information
+timestep 2.00
+neigh_modify delay 9 every 1	
+
+# command  etol    ftol   maxiter  maxeval
+minimize  1.0e-1  1.0e-1   100      100
+
+# Write initial structure for visualization
+dump initcoord all atom 1 system.lammpstrj
+dump_modify initcoord sort id
+
+# Reset timestep
+run 1
+undump initcoord
+reset_timestep 0
+
+# Equilibrate system
+velocity all create 77.6776 938247
+fix eqbm all npt temp 77.6776 77.6776 500 iso 100 100 1000.0
+
+
+# Print thermodynamic data
+thermo_style custom step ke pe etotal temp press pxx pyy pzz pxy pxz pyz
+thermo 250
+
+# Write trajectory
+dump cxtc all xtc 50 traj-0.xtc
+
+# Velocity information
+#dump 1 all custom 1 vel_npt.txt vx vy vz
+
+# Write g(r) information
+compute rdf all rdf 100
+fix rdf all ave/time 1 250000 250000 c_rdf file rdf_npt.xvg mode vector
+
+# Checkpoint files
+restart 5000 state_cpt-*.data
+
+# Final run command
+# Run for 1 nanosecond
+run 250000
+write_restart confout-0.data
+
+
